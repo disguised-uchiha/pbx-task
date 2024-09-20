@@ -4,25 +4,43 @@ window.onload = () => {
   console.log('pbjs', pbjs.getEvents())
   console.log('loaded here')
 
-  pbjs.onEvent('auctionInit', function(e) {
-    console.log('auctionInit', e)
+  pbjs.onEvent('auctionInit', function({auctionId, auctionStatus}) {
     const analyticsData = {
-      type: "auctionInit",
-      data: e
-    }
-
-    const headers = {
-      type: 'application/json',
+      eventType: "auctionInit",
+      data: {
+        auctionId,
+        auctionStatus
+      },
     };
-    const blob = new Blob([JSON.stringify(analyticsData)], headers);
-    navigator.sendBeacon('http://localhost:3000/send-events', blob);
+    
+    // ! NOTE: The CORS error I got was due to Beacon not supporting browser PREFLIGHT. 
+    // ! and preflight is added if i setting Custom header. 
+    // ! also with beaconAPI you can only sent text else the above issue happens
+    const success = navigator.sendBeacon('http://localhost:3000/send-events?eventType=auctionInit', JSON.stringify(analyticsData));
+    
+    if (!success) {
+      console.log('Beacon failed to send');
+    }
   });
 
+
+  const bidAnalyticsEvent = (event, eventType) => {
+    const analyticsData = {
+      eventType,
+      data: event,
+    };
+    const success = navigator.sendBeacon(`http://localhost:3000/send-events?eventType=${eventType}`, JSON.stringify(analyticsData));
+    
+    if (!success) {
+      console.log('Beacon failed to send');
+    } 
+  }
+
   pbjs.onEvent('bidRequested', function(e) {
-    console.log('bidRequested', e)
+    bidAnalyticsEvent(e, 'bidRequested');
   });
 
   pbjs.onEvent('bidResponse', function(e) {
-    console.log('bidResponse', e)
+    bidAnalyticsEvent(e, 'bidResponse');
   });
 }
